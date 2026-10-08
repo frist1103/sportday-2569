@@ -525,12 +525,15 @@ function autoLevel(){
   var rec = recLevels(s).filter(function(l){ return lvAll.indexOf(l) >= 0; });
   if (rec.length === 1) ui.level = rec[0];
 }
-function activeRecs(){ return recs.filter(function(r){ return r.st !== 'cancelled' && r.st !== 'cancelPending'; }); }
+function activeRecs(){
+  // ข้อมูลจากชีต (ทุกเครื่อง) + รายการในเครื่องที่ยังไม่ถึงชีต  ไม่นับที่ยกเลิก/ถูกลบ/กำลังแก้ไข
+  return merged().filter(function(x){ return x.status !== 'ยกเลิก' && !(editing && x.uid === editing.uid); });
+}
 function quotaWarn(){
   if (!ui.type || !ui.level || !cur.award || cur.award === 'ชมเชย') return '';
   var q = QUOTA[ui.type + '|' + ui.level] || 1;
   var same = activeRecs().filter(function(r){ return r.type === ui.type && r.level === ui.level && r.award === cur.award; });
-  if (same.length >= q) return '⚠ เครื่องนี้บันทึก "' + cur.award + '" ของรายการนี้ไปแล้ว ' + same.length + ' คน (' + same.map(function(r){ return r.name; }).join(', ') + ')';
+  if (same.length >= q) return '⚠ รายการนี้มี "' + cur.award + '" แล้ว ' + same.length + ' คน (' + same.map(function(r){ return r.name; }).join(', ') + ')';
   return '';
 }
 
@@ -551,7 +554,7 @@ function trySend(){
   var warns = [];
   if (s.id) {
     var dup = activeRecs().filter(function(r){ return r.sid === s.id && r.type === ui.type && r.level === ui.level; });
-    if (dup.length) warns.push('คนนี้บันทึกรายการนี้ไปแล้ว (' + dup[0].award + ')');
+    if (dup.length) warns.push('คนนี้มีผลรายการนี้แล้ว (' + dup[0].award + (dup[0].staff ? ' · ' + dup[0].staff : '') + ')');
   }
   var qw = quotaWarn(); if (qw) warns.push(qw.replace('⚠ ', ''));
   if (s.grade && recLevels(s).indexOf(ui.level) < 0) warns.push('ระดับ "' + ui.level + '" ไม่ตรงกับชั้น/เพศของนักกีฬา');
@@ -601,7 +604,7 @@ function sync(){
         .then(function(res){
           if (!res || !res.ok) throw new Error(res && res.error || 'ส่งไม่สำเร็จ');
           var map = {}; (res.results||[]).forEach(function(x){ map[x.uid] = x; });
-          subs.forEach(function(r){ var x = map[r.uid]; if (x) { if (r.st === 'pending') r.st = 'sent'; r.row = x.row; if (x.note) r.note = x.note; } });
+          subs.forEach(function(r){ var x = map[r.uid]; if (x) { if (r.st === 'pending') r.st = 'sent'; r.sentAt = Date.now(); r.row = x.row; if (x.note) r.note = x.note; } });
         })
     : cans.length ? api({action:'cancel', pin:cfg.pin, uids:cans.map(function(r){ return r.uid; })})
         .then(function(res){
@@ -620,7 +623,7 @@ function sync(){
     save(K.recs, recs); lastErr = ''; backoff = 4000;
     syncing = false; updatePill(); refreshSheet();
     if (pending().length) sync();
-    else if (view === 'results' || listDirty) { listDirty = false; fetchList(true); }
+    else { listDirty = false; fetchList(true); }
   }).catch(function(e){
     syncing = false;
     lastErr = (e && e.name === 'AbortError') ? 'เน็ตช้า/หมดเวลา' : (navigator.onLine === false ? 'ไม่มีอินเทอร์เน็ต' : String(e && e.message || e));
@@ -666,9 +669,11 @@ function showView(v){
 function fetchList(quiet){
   if (listLoading) return;
   listLoading = true; renderRes();
+  var reqAt = Date.now();
   api({action:'list', pin:cfg.pin}, 30000).then(function(res){
     if (!res || !res.ok) throw new Error(res && res.error || 'โหลดไม่สำเร็จ');
-    LIST = {rows:res.rows, at:res.at || new Date().toISOString()}; save(K.list, LIST); listErr = '';
+    LIST = {rows:res.rows, at:res.at || new Date().toISOString(), reqAt:reqAt}; save(K.list, LIST); listErr = '';
+    if (view === 'entry') render();
   }).catch(function(e){
     listErr = navigator.onLine === false ? 'ไม่มีอินเทอร์เน็ต — แสดงข้อมูลล่าสุดที่โหลดไว้' : 'โหลดไม่ได้: ' + (e.message || e);
     if (!quiet) toast(listErr, true);
@@ -683,6 +688,8 @@ function merged(){
     var x = map[r.uid];
     if (!x) {
       if (r.st === 'cancelled' && !r.tried) return;
+      // ถึงชีตแล้ว แต่รายการล่าสุดจากชีต (โหลดหลังจากนั้น) ไม่มี = ถูกลบออกจากชีต → ไม่แสดง
+      if (r.st !== 'pending' && LIST.reqAt && LIST.reqAt > (r.sentAt || (new Date(r.t).getTime() + 300000))) return;
       x = {uid:r.uid, t:r.t, staff:r.staff, type:r.type, level:r.level, sport:r.sport, award:r.award, sid:r.sid, name:r.name, cls:r.cls,
         status: r.st === 'pending' ? 'รอส่ง' : r.st === 'sent' ? 'รอพิมพ์' : 'ยกเลิก', note:r.note || '', local:true};
       map[r.uid] = x; out.push(x);
@@ -847,7 +854,8 @@ function histHtml(){
     '<div class="stats"><span>ทั้งหมด ' + recs.length + '</span><span>ถึงชีตแล้ว ' + sent + '</span><span>รอส่ง ' + n + '</span></div>' +
     (lastErr && n ? '<div class="warnline">ยังส่งไม่ได้: ' + esc(lastErr) + ' — ระบบจะลองส่งใหม่เองอัตโนมัติ ข้อมูลเก็บไว้ในเครื่องแล้ว ไม่หาย</div>' : '') +
     '<div class="tools"><button data-x="stay" data-tool="sync">ส่งตอนนี้</button><button data-x="stay" data-tool="copy">คัดลอกรายการค้างส่ง</button>' +
-    '<button data-x="stay" data-tool="reload">โหลดรายชื่อใหม่</button><button data-x="stay" data-tool="logout">เปลี่ยนผู้บันทึก</button></div>' +
+    '<button data-x="stay" data-tool="reload">โหลดรายชื่อใหม่</button><button data-x="stay" data-tool="logout">เปลี่ยนผู้บันทึก</button>' +
+    '<button data-x="stay" data-tool="clear" style="grid-column:1/-1;color:#8e2a12">🗑 ล้างประวัติในเครื่อง</button></div>' +
     (list || '<p class="hs" style="margin-top:14px">ยังไม่มีรายการ</p>');
 }
 function openHistory(){
@@ -864,6 +872,16 @@ function openHistory(){
     if (tool === 'sync') { backoff = 4000; sync(); toast('กำลังส่ง…'); }
     if (tool === 'copy') copyPending();
     if (tool === 'reload') { $('layer').innerHTML = ''; reloadData(); }
+    if (tool === 'clear') {
+      if (pending().length) { toast('ยังมีรายการรอส่ง ' + pending().length + ' รายการ ให้ส่งให้ครบก่อนจึงล้างได้', true); return; }
+      confirmBox('ล้างประวัติในเครื่องนี้?', 'ลบเฉพาะประวัติที่เก็บในมือถือเครื่องนี้ ข้อมูลในชีตไม่หาย PIN ชื่อผู้บันทึก และรายชื่อนักเรียนยังอยู่', 'ล้างประวัติ', function(){
+        recs = []; ops = []; LIST = {rows:[], at:''}; lastErr = '';
+        save(K.recs, recs); save(K.ops, ops); save(K.list, LIST);
+        updatePill(); render(); toast('ล้างประวัติในเครื่องแล้ว');
+        fetchList(true);
+      });
+      return;
+    }
     if (tool === 'logout') {
       if (pending().length) { toast('ยังมีรายการรอส่ง ' + pending().length + ' รายการ ให้ส่งให้ครบก่อน', true); return; }
       $('layer').innerHTML = ''; cfg.staff = ''; save(K.cfg, cfg); showSetup();
@@ -896,7 +914,7 @@ function showSetup(){
 function showApp(){
   $('setupView').classList.add('hidden'); $('appView').classList.remove('hidden');
   $('who').textContent = 'ผู้บันทึก: ' + cfg.staff;
-  buildIndex(); render(); updatePill(); sync();
+  buildIndex(); render(); updatePill(); sync(); fetchList(true);
 }
 function reloadData(){
   toast('กำลังโหลดรายชื่อ…');

@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e5a43">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ผลกรีฑา">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>บันทึกผลกรีฑา</title>
+<script>var API_URL = '';</script>
+<script src="config.js"></script>
+<style>
+:root{
+  --ink:#14211b; --ink2:#4b5a53; --line:#d9e0dc; --bg:#eef2ef; --card:#ffffff;
+  --field:#0e5a43; --field2:#0b4a37; --lane:#ffffff;
+  --track:#b8432a; --amber:#e8a200; --ok:#16804f; --warn-bg:#fff3cd; --warn:#8a5a00;
+  --gold:#c99a1a; --silver:#7d8a95; --bronze:#a35d32; --merit:#3b6aa3;
+  --r:14px;
+  font-family:"Sukhumvit Set","Noto Sans Thai","Leelawadee UI","Leelawadee","Tahoma",system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-size:17px;line-height:1.45;min-height:100vh}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid #2a7fff;outline-offset:2px}
+.hidden{display:none!important}
+
+/* ---------- header: สนามหญ้า + เส้นลู่ ---------- */
+header{position:sticky;top:0;z-index:20;background:var(--field);color:#fff;
+  padding:calc(env(safe-area-inset-top) + 8px) 14px 8px;display:flex;align-items:center;gap:10px;
+  background-image:repeating-linear-gradient(90deg,transparent 0 46px,rgba(255,255,255,.07) 46px 48px)}
+header .t{flex:1;min-width:0}
+header h1{font-size:19px;margin:0;font-weight:700;letter-spacing:.2px}
+header .who{font-size:13px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{border:0;border-radius:999px;padding:7px 12px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.pill.ok{background:#e3f5ea;color:var(--ok)}
+.pill.wait{background:#ffe9a8;color:#6b4a00}
+.pill.err{background:#ffd9cf;color:#8e2a12}
+.dot{width:9px;height:9px;border-radius:50%;background:currentColor}
+.pill.wait .dot{animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.pill.wait .dot{animation:none}}
+
+main{max-width:560px;margin:0 auto;padding:12px 12px 230px}
+.sec{background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:12px;border:1px solid var(--line)}
+.sec.missing{border-color:var(--track);box-shadow:0 0 0 2px rgba(184,67,42,.25)}
+.sec h2{font-size:16px;margin:0 0 10px;display:flex;align-items:center;gap:8px;color:var(--ink2);font-weight:700}
+.sec h2 .n{width:24px;height:24px;border-radius:50%;background:var(--field);color:#fff;display:grid;place-items:center;font-size:14px}
+.sec.done h2 .n{background:var(--ok)}
+
+/* ---------- ค้นหา ---------- */
+.search{display:flex;gap:8px}
+.search input{flex:1;min-width:0;font-size:22px;padding:12px 14px;border:2px solid var(--line);border-radius:12px;background:#fbfcfb}
+.search input:focus{border-color:var(--field);outline:none;background:#fff}
+.kb{border:2px solid var(--line);background:#fff;border-radius:12px;padding:0 12px;font-size:15px;font-weight:700;min-width:64px}
+.hint{font-size:14px;color:var(--ink2);margin:8px 2px 0}
+.results{margin-top:8px;max-height:46vh;overflow:auto;border-radius:12px}
+.res{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:#fff;padding:11px 8px}
+.res:active{background:#eef6f1}
+.res .id{font-variant-numeric:tabular-nums;font-weight:700;color:var(--field);min-width:56px}
+.res .nm{flex:1;min-width:0}
+.res .cl{font-size:14px;color:var(--ink2);white-space:nowrap}
+mark{background:#ffe58a;color:inherit;border-radius:3px}
+.empty{padding:12px 8px;color:var(--ink2);font-size:15px}
+.linkbtn{background:none;border:0;color:var(--field);text-decoration:underline;padding:6px 2px;font-size:15px;font-weight:600}
+
+.chosen{display:flex;gap:12px;align-items:center;background:#f2f8f4;border:2px solid var(--ok);border-radius:12px;padding:12px}
+.chosen .big{font-size:21px;font-weight:700;line-height:1.3}
+.chosen .meta{font-size:15px;color:var(--ink2);margin-top:2px}
+.chosen .meta b{color:var(--ink)}
+.chosen .x{margin-left:auto;align-self:flex-start;border:0;background:#fff;border-radius:10px;padding:8px 12px;font-size:15px;border:1px solid var(--line)}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--warn-bg);color:var(--warn);margin-left:4px;vertical-align:middle}
+
+.manual{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.manual label{font-size:14px;color:var(--ink2);display:flex;flex-direction:column;gap:4px}
+.manual input,.manual select{font-size:18px;padding:10px;border:2px solid var(--line);border-radius:10px;background:#fff;width:100%}
+.manual .full{grid-column:1/-1}
+
+/* ---------- ตัวเลือก ---------- */
+.lbl{font-size:14px;color:var(--ink2);margin:4px 2px 6px;font-weight:600}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chip{border:2px solid var(--line);background:#fff;border-radius:12px;padding:12px 8px;font-size:17px;font-weight:600;min-height:52px;line-height:1.25}
+.chip.on{background:var(--field);border-color:var(--field);color:#fff}
+.chip.rec:not(.on){border-color:#8cc5a8;background:#f2faf5}
+.chip small{display:block;font-size:12px;font-weight:600;opacity:.75}
+.more{margin-top:8px}
+.warnline{margin-top:10px;background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:8px 10px;font-size:15px;font-weight:600}
+
+/* รางวัล: สีเหรียญ */
+.awards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.aw{border:3px solid var(--c);color:var(--c);background:#fff;border-radius:14px;min-height:74px;font-size:18px;font-weight:800;line-height:1.2;padding:8px}
+.aw small{display:block;font-size:13px;font-weight:700;opacity:.85}
+.aw.on{background:var(--c);color:#fff}
+.aw[data-a="ชนะเลิศ"]{--c:var(--gold)}
+.aw[data-a="รองชนะเลิศอันดับ 1"]{--c:var(--silver)}
+.aw[data-a="รองชนะเลิศอันดับ 2"]{--c:var(--bronze)}
+.aw[data-a="ชมเชย"]{--c:var(--merit)}
+
+/* ---------- แถบล่าง: ตัวอย่างเกียรติบัตร + ส่ง ---------- */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:15;background:linear-gradient(transparent,var(--bg) 18px);padding:18px 12px calc(env(safe-area-inset-bottom) + 12px)}
+.dock-in{max-width:560px;margin:0 auto}
+.cert{background:#fffdf6;border:1px solid #e6dcc0;border-radius:12px;padding:8px 12px;text-align:center;margin-bottom:8px;box-shadow:0 2px 10px rgba(20,33,27,.08)}
+.cert div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cert .c1{font-size:18px;font-weight:700}
+.cert .c2,.cert .c3{font-size:15px}
+.cert .ph{color:#b3ab95}
+.send{width:100%;border:0;border-radius:14px;background:var(--track);color:#fff;font-size:21px;font-weight:800;padding:16px;min-height:62px;box-shadow:0 4px 0 #8a2f1b}
+.send:active{transform:translateY(2px);box-shadow:0 2px 0 #8a2f1b}
+.send.dim{background:#c9cfcb;box-shadow:0 4px 0 #a9b0ac;color:#fff}
+
+/* ---------- toast / modal / sheet ---------- */
+.toast{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 160px);z-index:40;max-width:536px;margin:0 auto;
+  background:#14211b;color:#fff;border-radius:14px;padding:12px 14px;display:flex;gap:10px;align-items:center;font-size:16px;
+  transform:translateY(20px);opacity:0;pointer-events:none;transition:.2s}
+.toast.show{transform:none;opacity:1;pointer-events:auto}
+.toast .msg{flex:1}
+.toast button{border:0;background:#fff;color:#14211b;border-radius:10px;padding:8px 12px;font-weight:700}
+.toast.bad{background:#8e2a12}
+
+.veil{position:fixed;inset:0;z-index:50;background:rgba(10,20,15,.5);display:flex;align-items:flex-end;justify-content:center}
+.modal{background:#fff;border-radius:18px 18px 0 0;width:100%;max-width:560px;padding:18px 16px calc(env(safe-area-inset-bottom) + 16px);max-height:88vh;overflow:auto}
+.modal h3{margin:0 0 8px;font-size:20px}
+.modal p{margin:6px 0}
+.row{display:flex;gap:10px;margin-top:14px}
+.row button{flex:1;border-radius:12px;padding:14px;font-size:17px;font-weight:700;border:2px solid var(--line);background:#fff}
+.row .pri{background:var(--track);border-color:var(--track);color:#fff}
+.row .go{background:var(--field);border-color:var(--field);color:#fff}
+
+.hist-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.stats span{font-size:14px;background:var(--bg);border-radius:8px;padding:4px 10px}
+.hitem{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px}
+.hitem.c{opacity:.55}
+.hitem.c .hn{text-decoration:line-through}
+.hn{font-weight:700}
+.hs{font-size:14px;color:var(--ink2)}
+.hb{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.st{font-size:13px;font-weight:700;border-radius:6px;padding:2px 8px}
+.st.p{background:#ffe9a8;color:#6b4a00}
+.st.s{background:#e3f5ea;color:var(--ok)}
+.st.x{background:#eee;color:#666}
+.hnote{font-size:13px;color:var(--warn);background:var(--warn-bg);border-radius:6px;padding:2px 6px}
+.hb .cx{margin-left:auto;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font-size:14px}
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.tools button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:12px 8px;font-size:15px;font-weight:600}
+
+/* ---------- setup ---------- */
+.setup{max-width:440px;margin:0 auto;padding:28px 18px}
+.setup h2{font-size:24px;margin:6px 0 4px}
+.setup p{color:var(--ink2);margin:0 0 18px}
+.setup label{display:block;font-weight:700;margin:14px 0 6px}
+.setup input{width:100%;font-size:20px;padding:13px 14px;border:2px solid var(--line);border-radius:12px;background:#fff}
+.setup .send{margin-top:22px}
+.err{color:#8e2a12;background:#ffe3db;border-radius:10px;padding:10px 12px;margin-top:14px;font-weight:600}
+body.typing .dock{display:none}
+body.typing main{padding-bottom:40px}
+.lanes{height:10px;border-radius:5px;background:repeating-linear-gradient(90deg,var(--track) 0 30px,#fff 30px 32px)}
+</style>
+</head>
+<body>
+
+<!-- ===================== หน้าตั้งค่าครั้งแรก ===================== -->
+<section id="setupView" class="setup hidden">
+  <div class="lanes"></div>
+  <h2>บันทึกผลกรีฑา</h2>
+  <p>ใส่ PIN และชื่อผู้บันทึกครั้งเดียว เครื่องจะโหลดรายชื่อนักเรียนเก็บไว้ ใช้งานต่อได้แม้เน็ตหลุด</p>
+  <label for="inPin">PIN</label>
+  <input id="inPin" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+  <label for="inStaff">ชื่อผู้บันทึก / จุดลงทะเบียน</label>
+  <input id="inStaff" type="text" placeholder="เช่น ครูสมชาย จุด 1" autocomplete="off">
+  <div id="urlBox" class="hidden">
+    <label for="inUrl">ลิงก์ระบบ (Apps Script)</label>
+    <input id="inUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocapitalize="off" spellcheck="false">
+  </div>
+  <button id="btnStart" class="send">เริ่มใช้งาน</button>
+  <div id="setupErr" class="err hidden"></div>
+</section>
+
+<!-- ===================== หน้าหลัก ===================== -->
+<div id="appView" class="hidden">
+<header>
+  <div class="t">
+    <h1>บันทึกผลกรีฑา</h1>
+    <div class="who" id="who"></div>
+  </div>
+  <button class="pill ok" id="pill"><span class="dot"></span><span id="pillTxt">ส่งครบแล้ว</span></button>
+</header>
+
+<main>
+  <!-- 1 นักกีฬา -->
+  <section class="sec" id="secStu">
+    <h2><span class="n">1</span>นักกีฬา</h2>
+    <div id="findBox">
+      <div class="search">
+        <input id="q" type="search" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="เลขประจำตัว">
+        <button class="kb" id="kb" aria-label="สลับแป้นพิมพ์">ก ข</button>
+      </div>
+      <div class="hint" id="qHint">พิมพ์เลขประจำตัว · กด <b>ก ข</b> เพื่อค้นด้วยชื่อ/นามสกุล · หรือพิมพ์ <b>1/3</b> เพื่อดูรายชื่อ ม.1/3</div>
+      <div class="results" id="results"></div>
+      <button class="linkbtn" id="btnManual">หาไม่เจอ? กรอกชื่อเอง</button>
+    </div>
+    <div id="chosenBox" class="hidden"></div>
+    <div id="manualBox" class="hidden">
+      <div class="manual">
+        <label>คำนำหน้า
+          <select id="mPre"><option>เด็กชาย</option><option>เด็กหญิง</option><option>นาย</option><option>นางสาว</option></select>
+        </label>
+        <label>เลขประจำตัว (ถ้ามี)<input id="mId" inputmode="numeric" autocomplete="off"></label>
+        <label>ชื่อ<input id="mFn" autocomplete="off"></label>
+        <label>นามสกุล<input id="mLn" autocomplete="off"></label>
+        <label>ชั้น
+          <select id="mCls"><option value="">-</option><option>ม.1</option><option>ม.2</option><option>ม.3</option><option>ม.4</option><option>ม.5</option><option>ม.6</option></select>
+        </label>
+        <label>ห้อง<input id="mRoom" inputmode="numeric" autocomplete="off"></label>
+      </div>
+      <button class="linkbtn" id="btnBackSearch">กลับไปค้นหาจากรายชื่อ</button>
+    </div>
+  </section>
+
+  <!-- 2 รายการ -->
+  <section class="sec" id="secEv">
+    <h2><span class="n">2</span>รายการแข่งขัน</h2>
+    <div class="lbl">ประเภทการแข่งขัน</div>
+    <div class="chips" id="types"></div>
+    <div class="lbl" style="margin-top:14px">ระดับการแข่งขัน</div>
+    <div id="levelHint" class="hint" style="margin-top:0">เลือกประเภทก่อน</div>
+    <div class="chips" id="levels"></div>
+    <button class="linkbtn more hidden" id="btnMoreLv">แสดงระดับอื่น ๆ</button>
+    <div class="warnline hidden" id="lvWarn"></div>
+  </section>
+
+  <!-- 3 รางวัล -->
+  <section class="sec" id="secAw">
+    <h2><span class="n">3</span>รางวัล</h2>
+    <div class="awards" id="awards"></div>
+    <div class="warnline hidden" id="awWarn"></div>
+  </section>
+</main>
+
+<div class="dock">
+  <div class="dock-in">
+    <div class="cert" aria-label="ข้อความที่จะพิมพ์บนเกียรติบัตร">
+      <div class="c1" id="pv1"></div>
+      <div class="c2" id="pv2"></div>
+      <div class="c3" id="pv3"></div>
+    </div>
+    <button class="send dim" id="btnSend">ส่งข้อมูล</button>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"><span class="msg" id="toastMsg"></span><button id="toastBtn" class="hidden"></button></div>
+<div id="layer"></div>
+
+<script>
+(function(){
+'use strict';
+// ------------------------------------------------------------------ storage
+var K = {cfg:'athl_cfg_v1', db:'athl_db_v1', recs:'athl_recs_v1', ui:'athl_ui_v1'};
+function load(k, d){ try{ var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
+function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+if (navigator.storage && navigator.storage.persist) { try{ navigator.storage.persist(); }catch(e){} }
+
+var $ = function(id){ return document.getElementById(id); };
+var cfg = load(K.cfg, null);
+var db = load(K.db, null);
+var recs = load(K.recs, []);
+var ui = load(K.ui, {type:'', level:''});
+
+// ------------------------------------------------------------------ API
+var inGas = !!(window.google && google.script && google.script.run);
+function apiUrl(){
+  if (API_URL) return API_URL;
+  var m = location.search.match(/[?&]api=([^&]+)/);
+  if (m) return decodeURIComponent(m[1]);
+  return (cfg && cfg.url) || '';
+}
+function api(payload, timeoutMs){
+  timeoutMs = timeoutMs || 20000;
+  if (inGas) {
+    return new Promise(function(res, rej){
+      var done = false;
+      var t = setTimeout(function(){ if(!done){ done = true; rej(new Error('หมดเวลา')); } }, timeoutMs);
+      google.script.run.withSuccessHandler(function(r){ if(!done){ done=true; clearTimeout(t); res(r); } })
+        .withFailureHandler(function(e){ if(!done){ done=true; clearTimeout(t); rej(e); } }).api(payload);
+    });
+  }
+  var url = apiUrl();
+  if (!url) return Promise.reject(new Error('ยังไม่ได้ตั้งลิงก์ระบบ'));
+  var ctl = window.AbortController ? new AbortController() : null;
+  var t = setTimeout(function(){ if (ctl) ctl.abort(); }, timeoutMs);
+  return fetch(url, {method:'POST', body:JSON.stringify(payload), headers:{'Content-Type':'text/plain;charset=utf-8'},
+    redirect:'follow', cache:'no-store', signal: ctl ? ctl.signal : undefined})
+    .then(function(r){ clearTimeout(t); if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .catch(function(e){ clearTimeout(t); throw e; });
+}
+
+// ------------------------------------------------------------------ data index
+var STU = [], BYID = {}, EVENTS = [], TYPES = [], QUOTA = {};
+var AWARDS = ['ชนะเลิศ', 'รองชนะเลิศอันดับ 1', 'รองชนะเลิศอันดับ 2', 'ชมเชย'];
+var AW_SHORT = {'ชนะเลิศ':'🥇', 'รองชนะเลิศอันดับ 1':'🥈', 'รองชนะเลิศอันดับ 2':'🥉', 'ชมเชย':'🎖'};
+function norm(s){ return String(s||'').toLowerCase().replace(/[\s.\-]/g,'').replace(/[็-๎]/g,''); }
+function genderOf(pre){ return /หญิง|นางสาว|^น\.ส|^นาง|^ด\.ญ/.test(pre) ? 'หญิง' : 'ชาย'; }
+function gradeOf(cls){ var m = String(cls||'').match(/(\d)/); return m ? +m[1] : 0; }
+function buildIndex(){
+  STU = []; BYID = {};
+  (db.students||[]).forEach(function(r){
+    var s = {id:String(r[0]), pre:r[1], fn:r[2], ln:r[3], cls:r[4], room:r[5], no:r[6]};
+    s.g = genderOf(s.pre); s.grade = gradeOf(s.cls);
+    s.full = s.pre + s.fn + ' ' + s.ln;
+    s.kf = norm(s.fn); s.kl = norm(s.ln);
+    s.cr = s.cls + (s.room ? '/' + s.room : '');
+    STU.push(s); BYID[s.id] = s;
+  });
+  EVENTS = (db.events||[]).map(function(e){ return {type:e[0], level:e[1], q:+e[2]||1}; });
+  TYPES = []; QUOTA = {};
+  EVENTS.forEach(function(e){ if (TYPES.indexOf(e.type) < 0) TYPES.push(e.type); QUOTA[e.type+'|'+e.level] = e.q; });
+  var rank = function(t){ var m = t.match(/^วิ่ง\s*(\d+)\s*เมตร/); return m ? +m[1] : (/x/.test(t) ? 5000 : 9000); };
+  TYPES.sort(function(x, y){ return rank(x) - rank(y) || x.localeCompare(y, 'th'); });
+}
+
+// ------------------------------------------------------------------ state
+var cur = {stu:null, manual:false, award:''};
+var showAllLv = false;
+function recLevels(s){
+  if (!s || !s.grade) return [];
+  var band = s.grade <= 3 ? 'ต้น' : 'ปลาย';
+  return ['ม.' + s.grade + ' ' + s.g, 'ม.' + band + ' ' + s.g];
+}
+function curStudent(){
+  if (cur.manual) {
+    var fn = $('mFn').value.trim(), ln = $('mLn').value.trim();
+    if (!fn) return null;
+    var pre = $('mPre').value, cls = $('mCls').value, room = $('mRoom').value.trim();
+    return {id:$('mId').value.trim(), pre:pre, fn:fn, ln:ln, full:pre + fn + (ln ? ' ' + ln : ''), cls:cls, room:room,
+      cr: cls ? cls + (room ? '/' + room : '') : '', g:genderOf(pre), grade:gradeOf(cls), manual:true};
+  }
+  return cur.stu;
+}
+function sportText(){ return ui.type && ui.level ? ui.type + ' ' + ui.level : ''; }
+
+// ------------------------------------------------------------------ search
+var kbMode = 'num';
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function hl(text, q){
+  if (!q) return esc(text);
+  var i = text.indexOf(q);
+  return i < 0 ? esc(text) : esc(text.slice(0,i)) + '<mark>' + esc(text.slice(i, i+q.length)) + '</mark>' + esc(text.slice(i+q.length));
+}
+function search(raw){
+  var q = raw.trim();
+  if (!q) return {list:[], msg:''};
+  var m = q.replace(/\s/g,'').match(/^(?:ม\.?)?([1-6])\/(\d{1,2})$/);
+  if (m) {
+    var cls = 'ม.' + m[1], room = m[2];
+    var l = STU.filter(function(s){ return s.cls === cls && String(s.room) === String(+room); })
+      .sort(function(a,b){ return (+a.no||0) - (+b.no||0); });
+    return {list:l, msg: l.length ? 'ม.' + m[1] + '/' + room + ' ทั้งห้อง ' + l.length + ' คน' : 'ไม่พบห้องนี้'};
+  }
+  if (/^\d+$/.test(q)) {
+    var l2 = STU.filter(function(s){ return s.id.indexOf(q) === 0; });
+    return {list:l2.slice(0,40), msg: l2.length > 40 ? 'พบ ' + l2.length + ' คน พิมพ์เลขต่ออีก' : ''};
+  }
+  var toks = q.split(/\s+/).map(norm).filter(Boolean);
+  var scored = [];
+  STU.forEach(function(s){
+    var score = 0, ok = true;
+    for (var i=0;i<toks.length;i++){
+      var t = toks[i];
+      if (s.kf.indexOf(t) === 0) score += 3;
+      else if (s.kl.indexOf(t) === 0) score += 2;
+      else if (s.kf.indexOf(t) >= 0 || s.kl.indexOf(t) >= 0) score += 1;
+      else { ok = false; break; }
+    }
+    if (ok) scored.push([score, s]);
+  });
+  scored.sort(function(a,b){ return b[0]-a[0] || a[1].grade-b[1].grade; });
+  return {list:scored.slice(0,40).map(function(x){ return x[1]; }), msg: scored.length > 40 ? 'พบ ' + scored.length + ' คน พิมพ์เพิ่มให้เจาะจงขึ้น' : ''};
+}
+function renderResults(){
+  var raw = $('q').value, r = search(raw), box = $('results');
+  if (!raw.trim()) { box.innerHTML = ''; return; }
+  var qn = raw.trim();
+  var html = r.list.map(function(s){
+    var name = s.pre + s.fn + ' ' + s.ln;
+    return '<button class="res" data-id="' + esc(s.id) + '"><span class="id">' + hl(s.id, /^\d+$/.test(qn) ? qn : '') +
+      '</span><span class="nm">' + (/^\d+$/.test(qn) ? esc(name) : hlName(s, qn)) + '</span><span class="cl">' + esc(s.cr) + (s.no ? ' เลขที่ ' + esc(s.no) : '') + '</span></button>';
+  }).join('');
+  if (!r.list.length) html = '<div class="empty">ไม่พบ "' + esc(raw) + '" — ลองค้นด้วยนามสกุล หรือกด "กรอกชื่อเอง"</div>';
+  if (r.msg) html = '<div class="empty">' + esc(r.msg) + '</div>' + html;
+  box.innerHTML = html;
+  if (/^\d{5}$/.test(qn) && r.list.length === 1 && r.list[0].id === qn) pick(r.list[0]);
+}
+function hlName(s, q){
+  var name = s.pre + s.fn + ' ' + s.ln;
+  var t = q.split(/\s+/)[0];
+  return hl(name, t);
+}
+function pick(s){
+  cur.stu = s; cur.manual = false; showAllLv = false;
+  $('q').value = ''; $('results').innerHTML = '';
+  autoLevel();
+  render();
+}
+
+// ------------------------------------------------------------------ render
+function render(){
+  var s = curStudent();
+  // section 1
+  $('findBox').classList.toggle('hidden', !!cur.stu || cur.manual);
+  $('manualBox').classList.toggle('hidden', !cur.manual);
+  var cb = $('chosenBox');
+  if (cur.stu) {
+    cb.classList.remove('hidden');
+    cb.innerHTML = '<div class="chosen"><div><div class="big">' + esc(cur.stu.full) + '</div><div class="meta">เลขประจำตัว <b>' + esc(cur.stu.id) +
+      '</b> · ชั้น <b>' + esc(cur.stu.cr) + '</b>' + (cur.stu.no ? ' · เลขที่ ' + esc(cur.stu.no) : '') + ' · ' + esc(cur.stu.g) + '</div></div><button class="x" id="btnChange">เปลี่ยน</button></div>';
+    $('btnChange').onclick = function(){ cur.stu = null; render(); $('q').focus(); };
+  } else { cb.classList.add('hidden'); cb.innerHTML = ''; }
+  $('secStu').classList.toggle('done', !!s);
+
+  // section 2: types
+  $('types').innerHTML = TYPES.map(function(t){
+    return '<button class="chip' + (ui.type === t ? ' on' : '') + '" data-t="' + esc(t) + '">' + esc(t) + '</button>';
+  }).join('');
+  var lvAll = EVENTS.filter(function(e){ return e.type === ui.type; }).map(function(e){ return e.level; });
+  var rec = recLevels(s).filter(function(l){ return lvAll.indexOf(l) >= 0; });
+  var shown = (!s || showAllLv || !rec.length) ? lvAll : lvAll.filter(function(l){ return rec.indexOf(l) >= 0 || l === ui.level; });
+  $('levels').innerHTML = shown.map(function(l){
+    var isRec = rec.indexOf(l) >= 0;
+    return '<button class="chip' + (ui.level === l ? ' on' : '') + (isRec ? ' rec' : '') + '" data-l="' + esc(l) + '">' + esc(l) +
+      (isRec && s ? '<small>ตรงกับนักกีฬา</small>' : '') + '</button>';
+  }).join('');
+  $('levelHint').textContent = !ui.type ? 'เลือกประเภทก่อน' : (s && rec.length && !showAllLv ? 'แสดงเฉพาะระดับที่ตรงกับชั้นและเพศของนักกีฬา' : '');
+  $('levelHint').classList.toggle('hidden', !$('levelHint').textContent);
+  $('btnMoreLv').classList.toggle('hidden', !(ui.type && s && rec.length && !showAllLv && shown.length < lvAll.length));
+  var lw = $('lvWarn');
+  if (s && ui.level && s.grade && recLevels(s).indexOf(ui.level) < 0) {
+    lw.textContent = '⚠ ระดับ "' + ui.level + '" ไม่ตรงกับนักกีฬา (' + (s.cr || '') + ' ' + s.g + ') ตรวจสอบอีกครั้ง';
+    lw.classList.remove('hidden');
+  } else lw.classList.add('hidden');
+  $('secEv').classList.toggle('done', !!(ui.type && ui.level));
+
+  // section 3
+  $('awards').innerHTML = AWARDS.map(function(a){
+    var main = a.replace('รองชนะเลิศอันดับ ', 'รองอันดับ ');
+    return '<button class="aw' + (cur.award === a ? ' on' : '') + '" data-a="' + esc(a) + '">' + AW_SHORT[a] + ' ' + esc(main) +
+      (a.indexOf('รอง') === 0 ? '<small>' + esc(a) + '</small>' : '') + '</button>';
+  }).join('');
+  var aw = $('awWarn'), qw = quotaWarn();
+  aw.textContent = qw; aw.classList.toggle('hidden', !qw);
+  $('secAw').classList.toggle('done', !!cur.award);
+
+  // preview
+  $('pv1').innerHTML = s ? esc(s.full) : '<span class="ph">ชื่อนักกีฬา</span>';
+  $('pv2').innerHTML = cur.award ? 'ได้รับรางวัล' + esc(cur.award) : '<span class="ph">ได้รับรางวัล…</span>';
+  $('pv3').innerHTML = sportText() ? esc(sportText()) : '<span class="ph">รายการแข่งขัน</span>';
+  $('btnSend').classList.toggle('dim', !(s && ui.type && ui.level && cur.award));
+  ['secStu','secEv','secAw'].forEach(function(id){ if ($(id).classList.contains('done')) $(id).classList.remove('missing'); });
+  save(K.ui, ui);
+}
+function autoLevel(){
+  var s = curStudent();
+  if (!ui.type || ui.level) return;
+  var lvAll = EVENTS.filter(function(e){ return e.type === ui.type; }).map(function(e){ return e.level; });
+  var rec = recLevels(s).filter(function(l){ return lvAll.indexOf(l) >= 0; });
+  if (rec.length === 1) ui.level = rec[0];
+}
+function activeRecs(){ return recs.filter(function(r){ return r.st !== 'cancelled' && r.st !== 'cancelPending'; }); }
+function quotaWarn(){
+  if (!ui.type || !ui.level || !cur.award || cur.award === 'ชมเชย') return '';
+  var q = QUOTA[ui.type + '|' + ui.level] || 1;
+  var same = activeRecs().filter(function(r){ return r.type === ui.type && r.level === ui.level && r.award === cur.award; });
+  if (same.length >= q) return '⚠ เครื่องนี้บันทึก "' + cur.award + '" ของรายการนี้ไปแล้ว ' + same.length + ' คน (' + same.map(function(r){ return r.name; }).join(', ') + ')';
+  return '';
+}
+
+// ------------------------------------------------------------------ submit
+function trySend(){
+  var s = curStudent();
+  var miss = [];
+  if (!s) miss.push('secStu');
+  if (!ui.type || !ui.level) miss.push('secEv');
+  if (!cur.award) miss.push('secAw');
+  if (miss.length) {
+    miss.forEach(function(id){ $(id).classList.add('missing'); });
+    $(miss[0]).scrollIntoView({behavior:'smooth', block:'center'});
+    toast('ยังไม่ครบ: ' + miss.map(function(id){ return {secStu:'นักกีฬา', secEv:'รายการแข่งขัน', secAw:'รางวัล'}[id]; }).join(', '), true);
+    return;
+  }
+  var warns = [];
+  if (s.id) {
+    var dup = activeRecs().filter(function(r){ return r.sid === s.id && r.type === ui.type && r.level === ui.level; });
+    if (dup.length) warns.push('คนนี้บันทึกรายการนี้ไปแล้ว (' + dup[0].award + ')');
+  }
+  var qw = quotaWarn(); if (qw) warns.push(qw.replace('⚠ ', ''));
+  if (s.grade && recLevels(s).indexOf(ui.level) < 0) warns.push('ระดับ "' + ui.level + '" ไม่ตรงกับชั้น/เพศของนักกีฬา');
+  if (warns.length) {
+    modal('<h3>ตรวจสอบก่อนส่ง</h3>' + warns.map(function(w){ return '<p>⚠ ' + esc(w) + '</p>'; }).join('') +
+      '<div class="row"><button data-x="no">กลับไปแก้</button><button class="pri" data-x="yes">ส่งต่อไป</button></div>',
+      function(x){ if (x === 'yes') doSend(s); });
+    return;
+  }
+  doSend(s);
+}
+function uid(){
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
+function doSend(s){
+  var r = {uid:uid(), t:new Date().toISOString(), staff:cfg.staff, type:ui.type, level:ui.level, sport:sportText(), award:cur.award,
+    sid:s.id || '', name:s.full, cls:s.cr || '', manual:!!s.manual, st:'pending'};
+  recs.push(r);
+  if (!save(K.recs, recs)) { recs.pop(); toast('บันทึกในเครื่องไม่ได้ (พื้นที่เต็ม?) ยังไม่ได้ส่ง', true); return; }
+  // ล้างคน + รางวัล เก็บประเภท/ระดับไว้สำหรับคนถัดไป
+  cur.stu = null; cur.award = '';
+  if (cur.manual) { cur.manual = false; ['mFn','mLn','mId','mRoom'].forEach(function(id){ $(id).value = ''; }); }
+  render();
+  window.scrollTo({top:0, behavior:'smooth'});
+  toast('✓ บันทึก ' + r.name + ' — ' + r.award, false, 'ยกเลิก', function(){ cancelRec(r.uid); });
+  updatePill(); sync();
+  setTimeout(function(){ $('q').focus(); }, 250);
+}
+
+// ------------------------------------------------------------------ sync (คิวส่งซ้ำ)
+var syncing = false, lastErr = '', retryT = null, backoff = 4000;
+function pending(){ return recs.filter(function(r){ return r.st === 'pending' || r.st === 'cancelPending'; }); }
+function sync(){
+  if (syncing) return;
+  var subs = recs.filter(function(r){ return r.st === 'pending'; }).slice(0, 25);
+  var cans = recs.filter(function(r){ return r.st === 'cancelPending'; }).slice(0, 25);
+  if (!subs.length && !cans.length) { lastErr = ''; updatePill(); return; }
+  syncing = true; updatePill(); clearTimeout(retryT);
+  subs.forEach(function(r){ r.tried = true; }); if (subs.length) save(K.recs, recs);
+  var job = subs.length
+    ? api({action:'submit', pin:cfg.pin, records:subs.map(function(r){ return {uid:r.uid, t:r.t, staff:r.staff, type:r.type, level:r.level, sport:r.sport, award:r.award, sid:r.sid, name:r.name, cls:r.cls, manual:r.manual}; })})
+        .then(function(res){
+          if (!res || !res.ok) throw new Error(res && res.error || 'ส่งไม่สำเร็จ');
+          var map = {}; (res.results||[]).forEach(function(x){ map[x.uid] = x; });
+          subs.forEach(function(r){ var x = map[r.uid]; if (x) { if (r.st === 'pending') r.st = 'sent'; r.row = x.row; if (x.note) r.note = x.note; } });
+        })
+    : api({action:'cancel', pin:cfg.pin, uids:cans.map(function(r){ return r.uid; })})
+        .then(function(res){
+          if (!res || !res.ok) throw new Error(res && res.error || 'ยกเลิกไม่สำเร็จ');
+          cans.forEach(function(r){ r.st = 'cancelled'; });
+        });
+  job.then(function(){
+    save(K.recs, recs); lastErr = ''; backoff = 4000;
+    syncing = false; updatePill(); refreshSheet();
+    if (pending().length) sync();
+  }).catch(function(e){
+    syncing = false;
+    lastErr = (e && e.name === 'AbortError') ? 'เน็ตช้า/หมดเวลา' : (navigator.onLine === false ? 'ไม่มีอินเทอร์เน็ต' : String(e && e.message || e));
+    if (/PIN/.test(lastErr)) toast('PIN ไม่ถูกต้อง กรุณาตั้งค่าใหม่', true);
+    updatePill(); refreshSheet();
+    clearTimeout(retryT);
+    retryT = setTimeout(sync, backoff);
+    backoff = Math.min(backoff * 2, 30000);
+  });
+}
+function updatePill(){
+  var n = pending().length, p = $('pill');
+  p.className = 'pill ' + (!n ? 'ok' : (lastErr && !syncing ? 'err' : 'wait'));
+  $('pillTxt').textContent = !n ? 'ส่งครบแล้ว' : (syncing ? 'กำลังส่ง ' + n : (lastErr ? 'รอส่ง ' + n : 'รอส่ง ' + n));
+}
+window.addEventListener('online', function(){ backoff = 4000; sync(); });
+document.addEventListener('visibilitychange', function(){ if (!document.hidden) sync(); });
+setInterval(function(){ if (pending().length && !syncing) sync(); }, 15000);
+window.addEventListener('beforeunload', function(e){ if (pending().length) { e.preventDefault(); e.returnValue = ''; } });
+
+function cancelRec(id){
+  var r = recs.filter(function(x){ return x.uid === id; })[0];
+  if (!r) return;
+  if (r.st === 'pending' && !r.tried) r.st = 'cancelled';           // ยังไม่เคยส่งออกไป ยกเลิกในเครื่องได้เลย
+  else if (r.st === 'cancelled' || r.st === 'cancelPending') return;
+  else r.st = 'cancelPending';                                        // ถึงชีตแล้ว (หรือกำลังส่ง) ต้องส่งคำสั่งยกเลิก
+  save(K.recs, recs); updatePill(); render(); refreshSheet();
+  toast('ยกเลิก ' + r.name + ' แล้ว');
+  sync();
+}
+
+// ------------------------------------------------------------------ toast / modal
+var toastT;
+function toast(msg, bad, btnTxt, fn){
+  var t = $('toast'); $('toastMsg').textContent = msg; t.classList.toggle('bad', !!bad);
+  var b = $('toastBtn');
+  if (btnTxt) { b.textContent = btnTxt; b.classList.remove('hidden'); b.onclick = function(){ t.classList.remove('show'); fn(); }; }
+  else b.classList.add('hidden');
+  t.classList.add('show'); clearTimeout(toastT);
+  toastT = setTimeout(function(){ t.classList.remove('show'); }, btnTxt ? 7000 : 3500);
+}
+var sheetOpen = null;
+function modal(html, onPick){
+  var l = $('layer');
+  l.innerHTML = '<div class="veil"><div class="modal" role="dialog" aria-modal="true">' + html + '</div></div>';
+  var v = l.firstChild;
+  v.addEventListener('click', function(e){
+    if (e.target === v) { close(); return; }
+    var b = e.target.closest('[data-x]');
+    if (b) { var x = b.getAttribute('data-x'); if (x !== 'stay') close(); if (onPick) onPick(x, b); }
+  });
+  function close(){ l.innerHTML = ''; sheetOpen = null; }
+  return v;
+}
+function fmtTime(iso){ var d = new Date(iso); return ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2); }
+function histHtml(){
+  var n = pending().length;
+  var sent = recs.filter(function(r){ return r.st === 'sent'; }).length;
+  var list = recs.slice().reverse().map(function(r){
+    var st = r.st === 'sent' ? '<span class="st s">✓ ถึงชีตแล้ว' + (r.row ? ' แถว ' + r.row : '') + '</span>'
+      : r.st === 'pending' ? '<span class="st p">⏳ รอส่ง</span>'
+      : r.st === 'cancelPending' ? '<span class="st p">⏳ รอส่งคำสั่งยกเลิก</span>'
+      : '<span class="st x">ยกเลิกแล้ว</span>';
+    var canX = r.st === 'sent' || r.st === 'pending';
+    return '<div class="hitem' + (r.st === 'cancelled' || r.st === 'cancelPending' ? ' c' : '') + '"><div class="hn">' + esc(r.name) + (r.manual ? '<span class="tag">กรอกเอง</span>' : '') + '</div>' +
+      '<div class="hs">' + AW_SHORT[r.award] + ' ' + esc(r.award) + ' · ' + esc(r.sport) + '</div>' +
+      '<div class="hb"><span class="hs">' + fmtTime(r.t) + (r.sid ? ' · ' + esc(r.sid) : '') + ' · ' + esc(r.cls) + '</span>' + st +
+      (r.note ? '<span class="hnote">' + esc(r.note) + '</span>' : '') +
+      (canX ? '<button class="cx" data-x="stay" data-cancel="' + esc(r.uid) + '">ยกเลิก</button>' : '') + '</div></div>';
+  }).join('');
+  return '<div class="hist-top"><h3>รายการที่บันทึก</h3><button class="kb" data-x="close" style="padding:8px 14px">ปิด</button></div>' +
+    '<div class="stats"><span>ทั้งหมด ' + recs.length + '</span><span>ถึงชีตแล้ว ' + sent + '</span><span>รอส่ง ' + n + '</span></div>' +
+    (lastErr && n ? '<div class="warnline">ยังส่งไม่ได้: ' + esc(lastErr) + ' — ระบบจะลองส่งใหม่เองอัตโนมัติ ข้อมูลเก็บไว้ในเครื่องแล้ว ไม่หาย</div>' : '') +
+    '<div class="tools"><button data-x="stay" data-tool="sync">ส่งตอนนี้</button><button data-x="stay" data-tool="copy">คัดลอกรายการค้างส่ง</button>' +
+    '<button data-x="stay" data-tool="reload">โหลดรายชื่อใหม่</button><button data-x="stay" data-tool="logout">เปลี่ยนผู้บันทึก</button></div>' +
+    (list || '<p class="hs" style="margin-top:14px">ยังไม่มีรายการ</p>');
+}
+function openHistory(){
+  var v = modal(histHtml(), function(x, b){
+    if (b.dataset.cancel) {
+      var id = b.dataset.cancel, r = recs.filter(function(z){ return z.uid === id; })[0];
+      modal('<h3>ยกเลิกรายการนี้?</h3><p>' + esc(r.name) + '<br>' + esc(r.award) + ' · ' + esc(r.sport) + '</p>' +
+        (r.st === 'sent' ? '<p class="hs">รายการนี้ถึงชีตแล้ว ระบบจะเปลี่ยนสถานะในชีตเป็น "ยกเลิก"</p>' : '') +
+        '<div class="row"><button data-x="no">ไม่ยกเลิก</button><button class="pri" data-x="yes">ยกเลิกรายการ</button></div>',
+        function(y){ if (y === 'yes') cancelRec(id); openHistory(); });
+      return;
+    }
+    var tool = b.dataset.tool;
+    if (tool === 'sync') { backoff = 4000; sync(); toast('กำลังส่ง…'); }
+    if (tool === 'copy') copyPending();
+    if (tool === 'reload') { $('layer').innerHTML = ''; reloadData(); }
+    if (tool === 'logout') {
+      if (pending().length) { toast('ยังมีรายการรอส่ง ' + pending().length + ' รายการ ให้ส่งให้ครบก่อน', true); return; }
+      $('layer').innerHTML = ''; cfg.staff = ''; save(K.cfg, cfg); showSetup();
+    }
+  });
+  sheetOpen = v;
+}
+function refreshSheet(){
+  if (!sheetOpen || !document.body.contains(sheetOpen)) return;
+  var m = sheetOpen.querySelector('.modal'); if (m && m.querySelector('.hist-top')) m.innerHTML = histHtml();
+}
+function copyPending(){
+  var p = recs.filter(function(r){ return r.st === 'pending'; });
+  if (!p.length) { toast('ไม่มีรายการค้างส่ง'); return; }
+  var txt = 'รายการค้างส่ง (' + cfg.staff + ')\n' + p.map(function(r, i){
+    return (i+1) + '. ' + r.name + (r.sid ? ' (' + r.sid + ')' : '') + ' ' + r.cls + ' | ' + r.award + ' | ' + r.sport;
+  }).join('\n');
+  var done = function(){ toast('คัดลอกแล้ว นำไปวางใน LINE ส่งทีมเกียรติบัตรได้'); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(done, function(){ fallbackCopy(txt); done(); });
+  else { fallbackCopy(txt); done(); }
+}
+function fallbackCopy(t){ var a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try{ document.execCommand('copy'); }catch(e){} a.remove(); }
+
+// ------------------------------------------------------------------ setup / boot
+function showSetup(){
+  $('appView').classList.add('hidden'); $('setupView').classList.remove('hidden');
+  $('urlBox').classList.toggle('hidden', inGas || !!API_URL || /[?&]api=/.test(location.search));
+  if (cfg) { $('inPin').value = cfg.pin || ''; $('inStaff').value = cfg.staff || ''; $('inUrl').value = cfg.url || ''; }
+}
+function showApp(){
+  $('setupView').classList.add('hidden'); $('appView').classList.remove('hidden');
+  $('who').textContent = 'ผู้บันทึก: ' + cfg.staff;
+  buildIndex(); render(); updatePill(); sync();
+}
+function reloadData(){
+  toast('กำลังโหลดรายชื่อ…');
+  api({action:'data', pin:cfg.pin}, 30000).then(function(res){
+    if (!res || !res.ok) throw new Error(res && res.error || 'โหลดไม่สำเร็จ');
+    db = {students:res.students, events:res.events, at:Date.now()}; save(K.db, db);
+    buildIndex(); render(); toast('โหลดรายชื่อแล้ว ' + STU.length + ' คน');
+  }).catch(function(e){ toast('โหลดไม่ได้: ' + (e.message || e) + ' (ใช้รายชื่อเดิมต่อได้)', true); });
+}
+$('btnStart').onclick = function(){
+  var pin = $('inPin').value.trim(), staff = $('inStaff').value.trim(), url = $('inUrl').value.trim() || apiUrl();
+  var err = $('setupErr'); err.classList.add('hidden');
+  if (!pin || !staff) { err.textContent = 'กรอก PIN และชื่อผู้บันทึกให้ครบ'; err.classList.remove('hidden'); return; }
+  cfg = {pin:pin, staff:staff, url:url || (cfg && cfg.url) || ''};
+  if (db && db.students && db.students.length && cfg.pin === (load(K.cfg, {}) || {}).pin) { save(K.cfg, cfg); showApp(); return; }
+  var b = this; b.disabled = true; b.textContent = 'กำลังโหลดรายชื่อ…';
+  api({action:'data', pin:pin}, 30000).then(function(res){
+    if (!res || !res.ok) throw new Error(res && res.error || 'โหลดไม่สำเร็จ');
+    db = {students:res.students, events:res.events, at:Date.now()};
+    save(K.db, db); save(K.cfg, cfg); showApp();
+  }).catch(function(e){
+    err.textContent = (e && e.name === 'AbortError') ? 'เน็ตช้าเกินไป ลองใหม่อีกครั้ง' : 'เข้าใช้งานไม่ได้: ' + (e.message || e) + (navigator.onLine === false ? ' (ไม่มีอินเทอร์เน็ต)' : '');
+    err.classList.remove('hidden');
+  }).then(function(){ b.disabled = false; b.textContent = 'เริ่มใช้งาน'; });
+};
+
+// ------------------------------------------------------------------ events
+$('q').addEventListener('input', renderResults);
+$('q').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') { var f = $('results').querySelector('.res'); if (f) f.click(); }
+});
+$('results').addEventListener('click', function(e){ var b = e.target.closest('.res'); if (b) pick(BYID[b.dataset.id]); });
+$('kb').onclick = function(){
+  kbMode = kbMode === 'num' ? 'text' : 'num';
+  var q = $('q');
+  q.setAttribute('inputmode', kbMode === 'num' ? 'numeric' : 'text');
+  q.placeholder = kbMode === 'num' ? 'เลขประจำตัว' : 'ชื่อ หรือ นามสกุล';
+  this.textContent = kbMode === 'num' ? 'ก ข' : '123';
+  q.blur(); setTimeout(function(){ q.focus(); }, 50);
+};
+$('btnManual').onclick = function(){
+  cur.manual = true; cur.stu = null;
+  var q = $('q').value.trim();
+  if (/^\d+$/.test(q)) $('mId').value = q; else if (q) $('mFn').value = q;
+  $('q').value = ''; $('results').innerHTML = '';
+  render(); $('mFn').focus();
+};
+$('btnBackSearch').onclick = function(){ cur.manual = false; render(); $('q').focus(); };
+['mPre','mFn','mLn','mCls','mRoom','mId'].forEach(function(id){ $(id).addEventListener('input', function(){ autoLevel(); render(); }); });
+$('types').addEventListener('click', function(e){
+  var b = e.target.closest('.chip'); if (!b) return;
+  var t = b.dataset.t; if (ui.type !== t) { ui.type = t; ui.level = ''; showAllLv = false; autoLevel(); }
+  render();
+});
+$('levels').addEventListener('click', function(e){ var b = e.target.closest('.chip'); if (!b) return; ui.level = b.dataset.l; render(); });
+$('btnMoreLv').onclick = function(){ showAllLv = true; render(); };
+$('awards').addEventListener('click', function(e){ var b = e.target.closest('.aw'); if (!b) return; cur.award = b.dataset.a; render(); });
+$('btnSend').onclick = trySend;
+$('pill').onclick = openHistory;
+
+// ซ่อนแถบล่างตอนพิมพ์ (แป้นพิมพ์มือถือดันแถบขึ้นมาบังผลค้นหา)
+document.addEventListener('focusin', function(e){ if (e.target.matches('#appView input')) document.body.classList.add('typing'); });
+document.addEventListener('focusout', function(){ setTimeout(function(){ if (!document.activeElement || !document.activeElement.matches('#appView input')) document.body.classList.remove('typing'); }, 60); });
+
+// boot
+if (cfg && cfg.pin && cfg.staff && db && db.students) showApp(); else showSetup();
+if ('serviceWorker' in navigator && !inGas && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+})();
+</script>
+</body>
+</html>

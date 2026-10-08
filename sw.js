@@ -1,5 +1,5 @@
 // แคชหน้าเว็บไว้ในเครื่อง เปิดได้แม้ไม่มีเน็ต (ไม่แตะคำขอที่ส่งไป Google)
-const CACHE = 'athl-v2';
+const CACHE = 'athl-v3';
 const FILES = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

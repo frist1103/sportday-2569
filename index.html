@@ -158,6 +158,40 @@ mark{background:#ffe58a;color:inherit;border-radius:3px}
 .setup .send{margin-top:22px}
 .err{color:#8e2a12;background:#ffe3db;border-radius:10px;padding:10px 12px;margin-top:14px;font-weight:600}
 body.typing .dock{display:none}
+/* แท็บ + หน้าดูผล */
+.tabs{display:flex;gap:6px;width:100%;max-width:560px;margin:8px auto 0}
+.tabs button{flex:1;border:0;border-radius:10px 10px 0 0;padding:9px 6px;font-size:16px;font-weight:700;background:rgba(255,255,255,.12);color:#fff}
+.tabs button.on{background:var(--bg);color:var(--field)}
+header{flex-wrap:wrap;padding-bottom:0}
+header .hrow{display:flex;align-items:center;gap:10px;width:100%;padding-bottom:2px}
+body.results .dock{display:none}
+body.results main{padding-bottom:40px}
+.editbar{background:#fff3cd;border:2px solid var(--amber);border-radius:12px;padding:10px 12px;margin-bottom:12px;display:flex;gap:10px;align-items:center;font-size:15px}
+.editbar b{display:block;font-size:17px}
+.editbar button{margin-left:auto;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;font-size:14px;white-space:nowrap}
+.rtools{display:flex;gap:8px;align-items:center}
+.rtools input{flex:1;min-width:0;font-size:18px;padding:10px 12px;border:2px solid var(--line);border-radius:12px;background:#fff}
+.rtools button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:10px 12px;font-size:15px;font-weight:700;white-space:nowrap}
+.rmeta{font-size:13px;color:var(--ink2);margin:6px 2px}
+.fchips{display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;scrollbar-width:none}
+.fchips button{flex:none;border:2px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-size:14px;font-weight:600;white-space:nowrap}
+.fchips button.on{background:var(--field);border-color:var(--field);color:#fff}
+.chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink2);margin:2px 2px 8px}
+.chk input{width:20px;height:20px}
+.grp{background:#fff;border:1px solid var(--line);border-radius:var(--r);margin-bottom:10px;overflow:hidden}
+.grp h4{margin:0;padding:10px 12px;background:#f2f6f3;font-size:16px;display:flex;justify-content:space-between;gap:8px}
+.grp h4 span{font-size:13px;color:var(--ink2);font-weight:600;white-space:nowrap}
+.miss{font-size:13px;color:#8e2a12;padding:6px 12px 0}
+.ritem{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border:0;border-top:1px solid var(--line);background:#fff;padding:10px 12px}
+.ritem:first-of-type{border-top:0}
+.ritem .md{font-size:22px;line-height:1.2}
+.ritem .bd{flex:1;min-width:0}
+.ritem .nm{font-weight:700}
+.ritem.x .nm{text-decoration:line-through;color:#888}
+.ritem .sb{font-size:13px;color:var(--ink2)}
+.st.w{background:#dbe9ff;color:#1d4f91}
+.noneyet{padding:10px 12px;color:var(--ink2);font-size:14px}
+
 body.typing main{padding-bottom:40px}
 .lanes{height:10px;border-radius:5px;background:repeating-linear-gradient(90deg,var(--track) 0 30px,#fff 30px 32px)}
 </style>
@@ -184,14 +218,19 @@ body.typing main{padding-bottom:40px}
 <!-- ===================== หน้าหลัก ===================== -->
 <div id="appView" class="hidden">
 <header>
-  <div class="t">
-    <h1>บันทึกผลกรีฑา</h1>
-    <div class="who" id="who"></div>
+  <div class="hrow">
+    <div class="t">
+      <h1>บันทึกผลกรีฑา</h1>
+      <div class="who" id="who"></div>
+    </div>
+    <button class="pill ok" id="pill"><span class="dot"></span><span id="pillTxt">ส่งครบแล้ว</span></button>
   </div>
-  <button class="pill ok" id="pill"><span class="dot"></span><span id="pillTxt">ส่งครบแล้ว</span></button>
+  <nav class="tabs" id="tabs"><button data-v="entry" class="on">บันทึกผล</button><button data-v="results">ดูผล / แก้ไข</button></nav>
 </header>
 
 <main>
+ <div id="entryView">
+  <div class="editbar hidden" id="editBar"><div>กำลังแก้ไขรายการของ<b id="editName"></b></div><button id="btnCancelEdit">ยกเลิกการแก้ไข</button></div>
   <!-- 1 นักกีฬา -->
   <section class="sec" id="secStu">
     <h2><span class="n">1</span>นักกีฬา</h2>
@@ -240,6 +279,19 @@ body.typing main{padding-bottom:40px}
     <div class="awards" id="awards"></div>
     <div class="warnline hidden" id="awWarn"></div>
   </section>
+ </div>
+
+ <!-- ===================== ดูผล ===================== -->
+ <div id="resultsView" class="hidden">
+  <div class="rtools">
+    <input id="rq" type="search" placeholder="ค้นชื่อ / เลขประจำตัว" autocomplete="off">
+    <button id="btnRefresh">↻ โหลดใหม่</button>
+  </div>
+  <div class="rmeta" id="rmeta"></div>
+  <div class="fchips" id="rtypes"></div>
+  <label class="chk"><input type="checkbox" id="rEmpty"> แสดงรายการที่ยังไม่มีผลด้วย</label>
+  <div id="rlist"></div>
+ </div>
 </main>
 
 <div class="dock">
@@ -261,7 +313,7 @@ body.typing main{padding-bottom:40px}
 (function(){
 'use strict';
 // ------------------------------------------------------------------ storage
-var K = {cfg:'athl_cfg_v1', db:'athl_db_v1', recs:'athl_recs_v1', ui:'athl_ui_v1'};
+var K = {cfg:'athl_cfg_v1', db:'athl_db_v1', recs:'athl_recs_v1', ui:'athl_ui_v1', ops:'athl_ops_v1', list:'athl_list_v1'};
 function load(k, d){ try{ var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
 function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
 if (navigator.storage && navigator.storage.persist) { try{ navigator.storage.persist(); }catch(e){} }
@@ -275,9 +327,9 @@ var ui = load(K.ui, {type:'', level:''});
 // ------------------------------------------------------------------ API
 var inGas = !!(window.google && google.script && google.script.run);
 function apiUrl(){
-  if (API_URL) return API_URL;
   var m = location.search.match(/[?&]api=([^&]+)/);
   if (m) return decodeURIComponent(m[1]);
+  if (API_URL) return API_URL;
   return (cfg && cfg.url) || '';
 }
 function api(payload, timeoutMs){
@@ -460,6 +512,9 @@ function render(){
   $('pv2').innerHTML = cur.award ? 'ได้รับรางวัล' + esc(cur.award) : '<span class="ph">ได้รับรางวัล…</span>';
   $('pv3').innerHTML = sportText() ? esc(sportText()) : '<span class="ph">รายการแข่งขัน</span>';
   $('btnSend').classList.toggle('dim', !(s && ui.type && ui.level && cur.award));
+  $('btnSend').textContent = editing ? 'บันทึกการแก้ไข' : 'ส่งข้อมูล';
+  $('editBar').classList.toggle('hidden', !editing);
+  if (editing) $('editName').textContent = editing.item.name + ' · ' + editing.item.award + ' · ' + editing.item.sport;
   ['secStu','secEv','secAw'].forEach(function(id){ if ($(id).classList.contains('done')) $(id).classList.remove('missing'); });
   save(K.ui, ui);
 }
@@ -482,6 +537,7 @@ function quotaWarn(){
 // ------------------------------------------------------------------ submit
 function trySend(){
   var s = curStudent();
+  if (editing && s && ui.type && ui.level && cur.award) { saveEdit(s); return; }
   var miss = [];
   if (!s) miss.push('secStu');
   if (!ui.type || !ui.level) miss.push('secEv');
@@ -528,12 +584,16 @@ function doSend(s){
 
 // ------------------------------------------------------------------ sync (คิวส่งซ้ำ)
 var syncing = false, lastErr = '', retryT = null, backoff = 4000;
-function pending(){ return recs.filter(function(r){ return r.st === 'pending' || r.st === 'cancelPending'; }); }
+var ops = load(K.ops, []);
+var LIST = load(K.list, {rows:[], at:''});
+function pendingOps(){ return ops.filter(function(o){ return o.st === 'pending'; }); }
+function pending(){ return recs.filter(function(r){ return r.st === 'pending' || r.st === 'cancelPending'; }).concat(pendingOps()); }
 function sync(){
   if (syncing) return;
   var subs = recs.filter(function(r){ return r.st === 'pending'; }).slice(0, 25);
   var cans = recs.filter(function(r){ return r.st === 'cancelPending'; }).slice(0, 25);
-  if (!subs.length && !cans.length) { lastErr = ''; updatePill(); return; }
+  var opsB = (!subs.length && !cans.length) ? pendingOps().slice(0, 25) : [];
+  if (!subs.length && !cans.length && !opsB.length) { lastErr = ''; updatePill(); return; }
   syncing = true; updatePill(); clearTimeout(retryT);
   subs.forEach(function(r){ r.tried = true; }); if (subs.length) save(K.recs, recs);
   var job = subs.length
@@ -543,15 +603,24 @@ function sync(){
           var map = {}; (res.results||[]).forEach(function(x){ map[x.uid] = x; });
           subs.forEach(function(r){ var x = map[r.uid]; if (x) { if (r.st === 'pending') r.st = 'sent'; r.row = x.row; if (x.note) r.note = x.note; } });
         })
-    : api({action:'cancel', pin:cfg.pin, uids:cans.map(function(r){ return r.uid; })})
+    : cans.length ? api({action:'cancel', pin:cfg.pin, uids:cans.map(function(r){ return r.uid; })})
         .then(function(res){
           if (!res || !res.ok) throw new Error(res && res.error || 'ยกเลิกไม่สำเร็จ');
           cans.forEach(function(r){ r.st = 'cancelled'; });
+        })
+    : api({action:'ops', pin:cfg.pin, ops:opsB.map(function(o){ return {id:o.id, kind:o.kind, uid:o.uid, staff:o.staff, fields:o.fields}; })})
+        .then(function(res){
+          if (!res || !res.ok) throw new Error(res && res.error || 'ส่งการแก้ไขไม่สำเร็จ');
+          var map = {}; (res.results||[]).forEach(function(x){ map[x.id] = x; });
+          opsB.forEach(function(o){ if (map[o.id]) { o.st = 'done'; o.res = map[o.id]; } });
+          save(K.ops, ops);
+          listDirty = true;
         });
   job.then(function(){
     save(K.recs, recs); lastErr = ''; backoff = 4000;
     syncing = false; updatePill(); refreshSheet();
     if (pending().length) sync();
+    else if (view === 'results' || listDirty) { listDirty = false; fetchList(true); }
   }).catch(function(e){
     syncing = false;
     lastErr = (e && e.name === 'AbortError') ? 'เน็ตช้า/หมดเวลา' : (navigator.onLine === false ? 'ไม่มีอินเทอร์เน็ต' : String(e && e.message || e));
@@ -581,6 +650,158 @@ function cancelRec(id){
   save(K.recs, recs); updatePill(); render(); refreshSheet();
   toast('ยกเลิก ' + r.name + ' แล้ว');
   sync();
+}
+
+// ------------------------------------------------------------------ ดูผล / แก้ไข / พิมพ์ซ้ำ
+var view = 'entry', editing = null, listDirty = false, rType = '', listLoading = false, listErr = '';
+function showView(v){
+  view = v;
+  $('entryView').classList.toggle('hidden', v !== 'entry');
+  $('resultsView').classList.toggle('hidden', v !== 'results');
+  document.body.classList.toggle('results', v === 'results');
+  [].forEach.call($('tabs').children, function(b){ b.classList.toggle('on', b.dataset.v === v); });
+  window.scrollTo(0, 0);
+  if (v === 'results') { renderRes(); fetchList(true); }
+}
+function fetchList(quiet){
+  if (listLoading) return;
+  listLoading = true; renderRes();
+  api({action:'list', pin:cfg.pin}, 30000).then(function(res){
+    if (!res || !res.ok) throw new Error(res && res.error || 'โหลดไม่สำเร็จ');
+    LIST = {rows:res.rows, at:res.at || new Date().toISOString()}; save(K.list, LIST); listErr = '';
+  }).catch(function(e){
+    listErr = navigator.onLine === false ? 'ไม่มีอินเทอร์เน็ต — แสดงข้อมูลล่าสุดที่โหลดไว้' : 'โหลดไม่ได้: ' + (e.message || e);
+    if (!quiet) toast(listErr, true);
+  }).then(function(){ listLoading = false; if (view === 'results') renderRes(); });
+}
+var AW_ORDER = {'ชนะเลิศ':0, 'รองชนะเลิศอันดับ 1':1, 'รองชนะเลิศอันดับ 2':2, 'ชมเชย':3};
+/** รวมข้อมูลจากชีต + รายการในเครื่องที่ยังไม่ถึงชีต + การแก้ไขที่ยังรอส่ง */
+function merged(){
+  var map = {}, out = [];
+  (LIST.rows || []).forEach(function(r){ var x = {}; for (var k in r) x[k] = r[k]; map[x.uid] = x; out.push(x); });
+  recs.forEach(function(r){
+    var x = map[r.uid];
+    if (!x) {
+      if (r.st === 'cancelled' && !r.tried) return;
+      x = {uid:r.uid, t:r.t, staff:r.staff, type:r.type, level:r.level, sport:r.sport, award:r.award, sid:r.sid, name:r.name, cls:r.cls,
+        status: r.st === 'pending' ? 'รอส่ง' : r.st === 'sent' ? 'รอพิมพ์' : 'ยกเลิก', note:r.note || '', local:true};
+      map[r.uid] = x; out.push(x);
+    }
+    if (r.st === 'cancelPending' || (r.st === 'cancelled' && x.status !== 'ยกเลิก')) { x.status = 'ยกเลิก'; x.opPending = true; }
+  });
+  pendingOps().forEach(function(o){
+    var x = map[o.uid]; if (!x) return;
+    if (o.kind === 'edit') { for (var k in o.fields) x[k] = o.fields[k]; x.status = 'รอพิมพ์'; }
+    if (o.kind === 'reprint') x.status = 'รอพิมพ์';
+    if (o.kind === 'cancel') x.status = 'ยกเลิก';
+    x.opPending = true;
+  });
+  return out;
+}
+function statusChip(x){
+  var c = x.status === 'พิมพ์แล้ว' ? 's' : x.status === 'ยกเลิก' ? 'x' : x.status === 'รอส่ง' ? 'p' : 'w';
+  return '<span class="st ' + c + '">' + esc(x.status === 'พิมพ์แล้ว' ? '🖨 พิมพ์แล้ว' : x.status === 'รอส่ง' ? '⏳ รอส่ง' : x.status) + '</span>' +
+    (x.opPending ? ' <span class="st p">⏳ รอส่งการแก้ไข</span>' : '');
+}
+function renderRes(){
+  if (view !== 'results') return;
+  var all = merged();
+  var q = $('rq').value.trim(), qn = norm(q);
+  var act = all.filter(function(x){ return x.status !== 'ยกเลิก'; });
+  $('rmeta').textContent = (listLoading ? 'กำลังโหลด… · ' : '') + (listErr ? listErr + ' · ' : '') +
+    'ทั้งหมด ' + act.length + ' คน · พิมพ์แล้ว ' + act.filter(function(x){ return x.status === 'พิมพ์แล้ว'; }).length +
+    ' · รอพิมพ์ ' + act.filter(function(x){ return x.status === 'รอพิมพ์'; }).length +
+    (LIST.at ? ' · อัปเดต ' + fmtTime(LIST.at) : '');
+  $('rtypes').innerHTML = ['',].concat(TYPES).map(function(t){
+    return '<button class="' + (rType === t ? 'on' : '') + '" data-t="' + esc(t) + '">' + (t ? esc(t) : 'ทุกประเภท') + '</button>';
+  }).join('');
+  var showEmpty = $('rEmpty').checked && !q;
+  var match = function(x){ return (!rType || x.type === rType) && (!q || norm(x.name).indexOf(qn) >= 0 || String(x.sid).indexOf(q) === 0); };
+  var items = all.filter(match);
+  var groups = [], seen = {};
+  EVENTS.slice().sort(function(a, b){ return TYPES.indexOf(a.type) - TYPES.indexOf(b.type); }).forEach(function(e){
+    if (rType && e.type !== rType) return;
+    var key = e.type + '|' + e.level; seen[key] = 1;
+    groups.push({key:key, title:e.type + ' ' + e.level, q:e.q, items:items.filter(function(x){ return x.type + '|' + x.level === key; })});
+  });
+  var other = items.filter(function(x){ return !seen[x.type + '|' + x.level]; });
+  if (other.length) groups.push({key:'other', title:'รายการอื่น ๆ', q:1, items:other});
+  var html = groups.filter(function(g){ return g.items.length || showEmpty; }).map(function(g){
+    var live = g.items.filter(function(x){ return x.status !== 'ยกเลิก'; });
+    var missing = g.key === 'other' ? [] : ['ชนะเลิศ', 'รองชนะเลิศอันดับ 1', 'รองชนะเลิศอันดับ 2'].filter(function(a){
+      return live.filter(function(x){ return x.award === a; }).length < g.q; });
+    g.items.sort(function(a, b){ return (a.status === 'ยกเลิก') - (b.status === 'ยกเลิก') || (AW_ORDER[a.award] - AW_ORDER[b.award]) || String(a.t).localeCompare(String(b.t)); });
+    return '<div class="grp"><h4>' + esc(g.title) + '<span>' + live.length + ' คน</span></h4>' +
+      (missing.length && live.length ? '<div class="miss">ยังไม่มี: ' + missing.map(function(a){ return AW_SHORT[a] + ' ' + a.replace('รองชนะเลิศอันดับ ', 'รอง '); }).join('  ') + '</div>' : '') +
+      (g.items.length ? g.items.map(function(x){
+        return '<button class="ritem' + (x.status === 'ยกเลิก' ? ' x' : '') + '" data-uid="' + esc(x.uid) + '"><span class="md">' + (AW_SHORT[x.award] || '•') + '</span><span class="bd">' +
+          '<span class="nm">' + esc(x.name) + '</span><br><span class="sb">' + esc(x.award) + ' · ' + esc(x.cls || '-') + (x.sid ? ' · ' + esc(x.sid) : '') + ' · ' + esc(x.staff || '') + ' ' + (x.t ? fmtTime(x.t) : '') + '</span>' +
+          '<div class="hb">' + statusChip(x) + (x.note ? '<span class="hnote">' + esc(x.note) + '</span>' : '') + '</div></span></button>';
+      }).join('') : '<div class="noneyet">ยังไม่มีผลส่งเข้ามา</div>') + '</div>';
+  }).join('');
+  $('rlist').innerHTML = html || '<div class="sec hs">' + (q ? 'ไม่พบ "' + esc(q) + '"' : (listLoading ? 'กำลังโหลด…' : 'ยังไม่มีผลที่บันทึก')) + '</div>';
+}
+function findItem(id){ return merged().filter(function(x){ return x.uid === id; })[0]; }
+function pushOp(kind, uid, fields){
+  ops.push({id:(window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now() + '-' + Math.random(), kind:kind, uid:uid, staff:cfg.staff, fields:fields || null, t:new Date().toISOString(), st:'pending'});
+  save(K.ops, ops); updatePill(); sync();
+}
+function itemActions(id){
+  var x = findItem(id); if (!x) return;
+  modal('<h3>' + esc(x.name) + '</h3><p class="hs">' + AW_SHORT[x.award] + ' ' + esc(x.award) + ' · ' + esc(x.sport) + '<br>' + esc(x.cls || '') + (x.sid ? ' · ' + esc(x.sid) : '') + '</p>' +
+    '<div class="hb" style="margin:8px 0">' + statusChip(x) + '</div>' + (x.note ? '<p class="hnote">' + esc(x.note) + '</p>' : '') +
+    '<div class="tools" style="grid-template-columns:1fr">' +
+    (x.status !== 'ยกเลิก' ? '<button data-x="edit">✎ แก้ไขข้อมูล</button>' : '<button data-x="edit">✎ แก้ไขและนำกลับมาใช้</button>') +
+    (x.status === 'พิมพ์แล้ว' ? '<button data-x="reprint">↻ ส่งพิมพ์ซ้ำ</button>' : '') +
+    (x.status !== 'ยกเลิก' ? '<button data-x="cancel" style="color:#8e2a12">ยกเลิกรายการนี้</button>' : '') +
+    '<button data-x="close">ปิด</button></div>',
+    function(a){
+      if (a === 'edit') startEdit(x);
+      if (a === 'reprint') { pushOp('reprint', x.uid); toast('ส่งพิมพ์ซ้ำแล้ว: ' + x.name); renderRes(); }
+      if (a === 'cancel') confirmBox('ยกเลิกรายการของ ' + x.name + '?', (x.status === 'พิมพ์แล้ว' ? 'เกียรติบัตรใบนี้พิมพ์ไปแล้ว ' : '') + 'ชีตจะเปลี่ยนสถานะเป็น "ยกเลิก"', 'ยกเลิกรายการ', function(){
+        var r = recs.filter(function(z){ return z.uid === x.uid; })[0];
+        if (r && (r.st === 'pending' || r.st === 'sent')) cancelRec(x.uid); else pushOp('cancel', x.uid);
+        renderRes();
+      });
+    });
+}
+function confirmBox(title, body, okTxt, fn){
+  modal('<h3>' + esc(title) + '</h3><p class="hs">' + esc(body) + '</p><div class="row"><button data-x="no">ไม่ใช่</button><button class="pri" data-x="yes">' + esc(okTxt) + '</button></div>',
+    function(x){ if (x === 'yes') fn(); });
+}
+var preEdit = null;
+function startEdit(x){
+  preEdit = {type:ui.type, level:ui.level};
+  editing = {uid:x.uid, item:{name:x.name, award:x.award, sport:x.sport}};
+  cur.award = x.award; ui.type = x.type; ui.level = x.level; showAllLv = true;
+  var st = x.sid && BYID[x.sid];
+  if (st && st.full === x.name) { cur.stu = st; cur.manual = false; }
+  else {
+    cur.stu = null; cur.manual = true;
+    var pres = ['เด็กชาย', 'เด็กหญิง', 'นางสาว', 'นาย'], pre = '', rest = x.name;
+    pres.forEach(function(p){ if (!pre && rest.indexOf(p) === 0) { pre = p; rest = rest.slice(p.length); } });
+    var parts = rest.trim().split(/\s+/);
+    if (pre) $('mPre').value = pre;
+    $('mFn').value = parts.shift() || ''; $('mLn').value = parts.join(' ');
+    $('mId').value = x.sid || '';
+    var m = String(x.cls || '').match(/^(ม\.\d)(?:\/(\d+))?/); $('mCls').value = m ? m[1] : ''; $('mRoom').value = m && m[2] ? m[2] : '';
+  }
+  showView('entry'); render();
+}
+function endEdit(){
+  editing = null; cur.stu = null; cur.award = ''; cur.manual = false; showAllLv = false;
+  ['mFn','mLn','mId','mRoom'].forEach(function(id){ $(id).value = ''; });
+  if (preEdit) { ui.type = preEdit.type; ui.level = preEdit.level; preEdit = null; }
+  render();
+}
+function saveEdit(s){
+  var f = {type:ui.type, level:ui.level, sport:sportText(), award:cur.award, sid:s.id || '', name:s.full, cls:s.cr || ''};
+  var r = recs.filter(function(z){ return z.uid === editing.uid; })[0];
+  if (r) { for (var k in f) r[k] = f[k]; if (r.st === 'cancelled') r.st = r.tried ? 'sent' : 'pending'; save(K.recs, recs); }
+  if (!(r && r.st === 'pending' && !r.tried)) pushOp('edit', editing.uid, f);   // ถึงชีตแล้ว ส่งคำสั่งแก้ไข
+  else sync();
+  toast('✓ บันทึกการแก้ไข ' + f.name + ' — ส่งไปพิมพ์ใหม่แล้ว');
+  endEdit(); showView('results');
 }
 
 // ------------------------------------------------------------------ toast / modal
@@ -734,6 +955,21 @@ $('levels').addEventListener('click', function(e){ var b = e.target.closest('.ch
 $('btnMoreLv').onclick = function(){ showAllLv = true; render(); };
 $('awards').addEventListener('click', function(e){ var b = e.target.closest('.aw'); if (!b) return; cur.award = b.dataset.a; render(); });
 $('btnSend').onclick = trySend;
+$('tabs').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if (!b) return;
+  if (editing && b.dataset.v === 'results') { endEdit(); }
+  showView(b.dataset.v);
+});
+$('btnCancelEdit').onclick = function(){ endEdit(); showView('results'); };
+$('rq').addEventListener('input', renderRes);
+$('rEmpty').addEventListener('change', renderRes);
+$('btnRefresh').onclick = function(){ fetchList(false); };
+$('rtypes').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; rType = b.dataset.t; renderRes(); });
+$('rlist').addEventListener('click', function(e){ var b = e.target.closest('.ritem'); if (b) itemActions(b.dataset.uid); });
+setInterval(function(){ if (view === 'results' && !document.hidden && !syncing) fetchList(true); }, 30000);
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('controllerchange', function(){
+  toast('มีแอปเวอร์ชันใหม่', false, 'โหลดใหม่', function(){ location.reload(); });
+});
 $('pill').onclick = openHistory;
 
 // ซ่อนแถบล่างตอนพิมพ์ (แป้นพิมพ์มือถือดันแถบขึ้นมาบังผลค้นหา)
